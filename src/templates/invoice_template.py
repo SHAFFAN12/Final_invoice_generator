@@ -171,28 +171,27 @@ class InvoiceTemplate(BaseTemplate):
         headers = ["Sr.", "Description", "Size", "Duration", "Amount"]
         col_widths = [10, 90, 20, 25, 35]
         start_x = 10
-        row_min_height = 20  # Minimum row height
+        row_min_height = 15  # Minimum row height
+        top_padding = 2      # Padding from top inside cells
 
         # 1️⃣ Gap before header
-        pdf.ln(5)  # 5 point space before header
+        pdf.ln(5)
 
         # Header row
         pdf.set_font("Arial", 'B', 9)
         pdf.set_fill_color(240, 240, 240)
         pdf.set_x(start_x)
         for i, header in enumerate(headers):
-            pdf.cell(col_widths[i], 8, header, 1,0, align='C', fill=True)
+            pdf.cell(col_widths[i], 8, header, 1, 0, align='C', fill=True)
         pdf.ln()
 
         pdf.set_font("Arial", '', 11)
 
-
+        # Table rows
         for idx, item in enumerate(items, 1):
-
             description = item.get("Description", "").strip()
             start = item.get("Campaign Start Date", "").strip()
             end = item.get("Campaign End Date", "").strip()
-
 
             full_desc = description
             if start or end:
@@ -206,28 +205,29 @@ class InvoiceTemplate(BaseTemplate):
             max_y = y_start
 
             # Sr. No
-            pdf.set_xy(start_x, y_start)
+            pdf.set_xy(start_x, y_start + top_padding)
             pdf.multi_cell(col_widths[0], 5, str(idx), border=0, align='C')
             max_y = max(max_y, pdf.get_y())
 
             # Description
-            pdf.set_xy(start_x + col_widths[0], y_start)
+            pdf.set_xy(start_x + col_widths[0], y_start + top_padding)
             pdf.multi_cell(col_widths[1], 5, full_desc, border=0, align='L')
             max_y = max(max_y, pdf.get_y())
 
             # Size
-            pdf.set_xy(start_x + col_widths[0] + col_widths[1], y_start)
+            pdf.set_xy(start_x + col_widths[0] + col_widths[1], y_start + top_padding)
             pdf.multi_cell(col_widths[2], 5, item.get("Size", ""), border=0, align='C')
             max_y = max(max_y, pdf.get_y())
 
             # Duration
-            pdf.set_xy(start_x + col_widths[0] + col_widths[1] + col_widths[2], y_start)
+            pdf.set_xy(start_x + col_widths[0] + col_widths[1] + col_widths[2], y_start + top_padding)
             pdf.multi_cell(col_widths[3], 5, item.get("Duration", ""), border=0, align='C')
             max_y = max(max_y, pdf.get_y())
 
             # Amount
             amount_val = f"Rs. {item.get('Amount', '')}/-"
-            pdf.set_xy(start_x + col_widths[0] + col_widths[1] + col_widths[2] + col_widths[3], y_start)
+            pdf.set_font("Arial", 'B', 11)
+            pdf.set_xy(start_x + col_widths[0] + col_widths[1] + col_widths[2] + col_widths[3], y_start + top_padding)
             pdf.multi_cell(col_widths[4], 5, amount_val, border=0, align='C')
             max_y = max(max_y, pdf.get_y())
 
@@ -255,10 +255,10 @@ class InvoiceTemplate(BaseTemplate):
             pdf.line(current_x, y_start, current_x, y_end)
             pdf.set_y(y_end)
 
-        # Draw top and bottom border
-        pdf.line(start_x, pdf.get_y() - (row_min_height * (len(items) + remaining_rows)),
-                start_x + sum(col_widths), pdf.get_y() - (row_min_height * (len(items) + remaining_rows)))
-        pdf.line(start_x, pdf.get_y(), start_x + sum(col_widths), pdf.get_y())
+        # Draw only one fixed bottom border at the end
+        table_bottom_y = pdf.get_y()
+        pdf.line(start_x, table_bottom_y, start_x + sum(col_widths), table_bottom_y)
+
 
 
 
