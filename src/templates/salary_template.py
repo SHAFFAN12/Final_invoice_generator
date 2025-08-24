@@ -1,8 +1,10 @@
 from fpdf import FPDF
 from .base_template import BaseTemplate
-from typing import Dict, Any, List
+from typing import Dict, Any
 from num2words import num2words
 import locale
+from datetime import datetime
+
 
 class SalaryTemplate(BaseTemplate):
     @property
@@ -22,45 +24,17 @@ class SalaryTemplate(BaseTemplate):
             ],
             "earnings_inputs": [
                 {"name": "Basic Salary", "type": "number"},
-                {"name": "House Rent Allowance", "type": "number"},
-                {"name": "Dearness Allowance", "type": "number"},
-                {"name": "Conveyance Allowance", "type": "number"},
-                {"name": "Medical Allowance", "type": "number"},
-                {"name": "Special Allowance", "type": "number"},
-                {"name": "Bonus", "type": "number"},
-                {"name": "Overtime", "type": "number"},
-                {"name": "Other Earnings", "type": "number"}
-            ],
-            "deductions_inputs": [
-                {"name": "Provident Fund", "type": "number"},
-                {"name": "Professional Tax", "type": "number"},
-                {"name": "Income Tax (TDS)", "type": "number"},
-                {"name": "ESI Contribution", "type": "number"},
-                {"name": "Loan Recovery", "type": "number"},
-                {"name": "Advance Recovery", "type": "number"},
-                {"name": "Late Attendance", "type": "number"},
-                {"name": "Other Deductions", "type": "number"}
-            ],
-            "line_items": {
-                "Earnings": {"columns": ["Particulars", "Amount"]},
-                "Deductions": {"columns": ["Particulars", "Amount"]}
-            }
+                {"name": "Mobile Allowance", "type": "number"},
+                {"name": "Fuel Allowance", "type": "number"},
+                {"name": "Other Allowance", "type": "number"}
+            ]
         }
 
     def validate_data(self, data: Dict[str, Any]) -> bool:
-        # Validate header fields
-        for field, _ in self.get_template()["header_fields"]:
+        required_fields = ["Employee Name", "Employee No", "Designation", "Department", "CNIC", "Month"]
+        for field in required_fields:
             if not data.get(field):
                 return False
-
-        # Validate earnings and deductions format
-        for section in ["Earnings", "Deductions"]:
-            items = data.get(section)
-            if not isinstance(items, list):
-                return False
-            for row in items:
-                if not isinstance(row, dict) or not all(k in row for k in ["Particulars", "Amount"]):
-                    return False
         return True
 
     def generate_pdf_content(self, pdf: FPDF, data: Dict[str, Any]) -> None:
@@ -69,64 +43,102 @@ class SalaryTemplate(BaseTemplate):
         except:
             pass
 
-        pdf.set_font("Arial", 'B', 16)
-        pdf.cell(0, 12, self.template_type.upper(), ln=True, align='C')
-        pdf.ln(6)
+        # Date (top right, no border)
+        pdf.set_font("Arial", '', 10)
+        current_date = datetime.now().strftime("%d %B %Y")
+        pdf.cell(0, 8, f"Date: {current_date}", 0, 1, 'R')
+        pdf.ln(5)
+
+        # Salary Slip Title with border
+        month_year = data.get("Month", "")
+        pdf.set_font("Arial", 'B', 14)
+        pdf.cell(0, 10, f"Salary Slip for {month_year}", 1, 1, 'C')
 
         # Employee Information
+        employee_info = [
+            ("Name", data.get("Employee Name", "")),
+            ("Emp. No", data.get("Employee No", "")),
+            ("Designation", data.get("Designation", "")),
+            ("Department", data.get("Department", "")),
+            ("CNIC", data.get("CNIC", ""))
+        ]
+
+        start_x = pdf.get_x()
+        start_y = pdf.get_y()
         pdf.set_font("Arial", '', 10)
-        for field, _ in self.get_template()["header_fields"]:
+
+        for label, value in employee_info:
             pdf.set_font("Arial", 'B', 10)
-            pdf.cell(40, 8, f"{field}:", 0, 0)
-            pdf.set_font("Arial", '', 10)
-            pdf.cell(0, 8, str(data.get(field, "")), 0, 1)
-        pdf.ln(4)
-
-        # Draw earnings and deductions
-        def draw_table(title: str, items: List[Dict[str, str]]) -> float:
-            pdf.set_font("Arial", 'B', 11)
-            pdf.cell(0, 8, title, ln=True)
-
+            pdf.cell(30, 8, f"{label}:", 0, 0, 'L')
             pdf.set_font("Arial", 'B', 10)
-            pdf.cell(120, 8, "Particulars", border=1)
-            pdf.cell(60, 8, "Amount (PKR)", border=1, ln=True, align='R')
+            pdf.cell(0, 8, value, 0, 1, 'L')
 
-            pdf.set_font("Arial", '', 10)
-            total = 0.0
-            for row in items:
-                particular = row.get("Particulars", "")
-                amount_str = row.get("Amount", "0").replace(",", "")
-                try:
-                    amount = float(amount_str)
-                except:
-                    amount = 0.0
-                total += amount
-                pdf.cell(120, 8, particular, border=1)
-                pdf.cell(60, 8, f"{amount:,.2f}", border=1, ln=True, align='R')
-            pdf.ln(4)
-            return total
+        # Draw border around employee info
+        end_y = pdf.get_y()
+        block_height = end_y - start_y
+        pdf.set_xy(start_x, start_y)
+        pdf.cell(0, block_height, "", "TLR", 1, 'L')
 
-        earnings = data.get("Earnings", [])
-        deductions = data.get("Deductions", [])
+        # Earnings Table Header
+        pdf.set_font("Arial", 'B', 12)
+        pdf.cell(120, 8, "EARNINGS", 1, 0, 'C')
+        pdf.cell(60, 8, "", 1, 1, 'C')
+        
+        
+        # Earnings Rows
+        total_earnings = 0
+        pdf.set_font("Arial", '', 10)
 
-        total_earnings = draw_table("EARNINGS", earnings)
-        total_deductions = draw_table("DEDUCTIONS", deductions)
+        def add_row(name, value):
+            nonlocal total_earnings
+            if value > 0:
+                pdf.cell(60, 8, name, "L", 0, 'L')  # Label in first column (left border only)
+                pdf.cell(60, 8, f"{int(value):,}", "R", 0, 'L')  # Amount in second column (right border only)
+                pdf.cell(60, 8, "", "R", 1, 'L')  # Empty third column (right border only)
+                total_earnings += value
 
-        net_pay = total_earnings - total_deductions
+        basic_salary = float(data.get("Basic Salary", "0").replace(",", "") or 0)
+        add_row("Basic Salary", basic_salary)
 
-        pdf.set_font("Arial", 'B', 11)
-        pdf.cell(120, 10, "NET PAY", border=1, align='R')
-        pdf.cell(60, 10, f"{net_pay:,.2f}", border=1, ln=True, align='R')
-        pdf.ln(5)
+        mobile_allowance = float(data.get("Mobile Allowance", "0").replace(",", "") or 0)
+        add_row("Mobile Allowance", mobile_allowance)
+
+        fuel_allowance = float(data.get("Fuel Allowance", "0").replace(",", "") or 0)
+        add_row("Fuel Allowance", fuel_allowance)
+
+        # Add empty row for spacing
+        pdf.cell(60, 6, "", "L", 0)
+        pdf.cell(60, 6, "", "R", 0)
+        pdf.cell(60, 6, "", "R", 1)
+
+        # Gross Salary
+        pdf.set_font("Arial", 'B', 10)
+        pdf.cell(60, 10, "Gross Salary", "LB", 0, 'L')  # Left and bottom border
+        pdf.cell(60, 10, f"{int(total_earnings):,}", "RB", 0, 'L')  # Right and bottom border
+        pdf.cell(60, 10, "", "RB", 1, 'L')  # Right and bottom border
+
+        # ⚡ Removed padding rows before Net Pay
+
+        # Net Pay (same as Gross since no deductions)
+        net_pay = total_earnings
+        pdf.set_font("Arial", 'B', 12)
+
+        # NET PAY row (center aligned text)
+        pdf.cell(120, 10, "NET PAY", 1, 0, 'C')  # ← 'C' for center align
+        pdf.cell(60, 10, f"{int(net_pay):,}", 1, 1, 'C')
+        pdf.ln(8)
+
 
         # Amount in Words
         try:
-            words = num2words(net_pay, lang='en_IN').capitalize()
+            words = num2words(net_pay, lang='en').replace('and', '').title()
         except:
-            words = f"{net_pay:,.2f}"
+            words = f"{int(net_pay):,}"
 
-        pdf.set_font("Arial", 'I', 10)
-        pdf.multi_cell(0, 6, f"Amount in words: {words} rupees only", 0, 'L')
+        pdf.set_font("Arial", 'IU', 10)
+        pdf.cell(0, 8, f"Amount In Words: {words} Only", 0, 1, 'L')  # ← "0" means no border
+        pdf.ln(10)
+
 
 
 def get_template_class():

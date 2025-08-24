@@ -50,16 +50,30 @@ class PDFGenerator:
         output_path: str,
         data: Dict[str, Any],
         signature_path: Optional[str] = None,
-        stamp_path: Optional[str] = None
+        stamp_path: Optional[str] = None,
+        company_logo_path: Optional[str] = None,
+        logo_x: int = 15,
+        logo_y: Optional[int] = None,
+        logo_width: int = 40,
+        logo_height: int = 0
     ) -> None:
         self._create_page_with_letterhead(letterhead_path)
 
         template_class = self._get_template_class(doc_type)
         if template_class:
             template_instance = template_class()
-            template_instance.generate_pdf_content(self.pdf, data)  # FIXED
+            template_instance.generate_pdf_content(self.pdf, data)
 
-        self._add_signature_stamp(company, signature_path, stamp_path)
+        self._add_signature_stamp(
+            company, 
+            signature_path, 
+            stamp_path,
+            company_logo_path,
+            logo_x,
+            logo_y,
+            logo_width,
+            logo_height
+        )
         self.pdf.output(output_path)
 
     def _get_template_class(self, doc_type: str) -> Optional[Type[BaseTemplate]]:
@@ -75,8 +89,8 @@ class PDFGenerator:
 
         if letterhead_path and Path(letterhead_path).exists():
             try:
-                self.pdf.image(letterhead_path, x=0, y=0, w=210, h=297)  # A4 size in mm
-                self.pdf.set_y(60)  # Move below the letterhead header space
+                self.pdf.image(letterhead_path, x=0, y=0, w=210, h=297)
+                self.pdf.set_y(60)
             except Exception as e:
                 print(f"Error loading letterhead: {e}")
                 self.pdf.set_y(50)
@@ -87,7 +101,12 @@ class PDFGenerator:
         self,
         company: str,
         signature_path: Optional[str],
-        stamp_path: Optional[str]
+        stamp_path: Optional[str],
+        company_logo_path: Optional[str] = None,
+        logo_x: int = 15,
+        logo_y: Optional[int] = None,
+        logo_width: int = 40,
+        logo_height: int = 0
     ) -> None:
         self.pdf.ln(15)
 
@@ -104,7 +123,22 @@ class PDFGenerator:
             except Exception as e:
                 print(f"Error adding stamp: {e}")
 
+        # Sirf company logo add karein, text nahi (unless logo unavailable)
+        if company_logo_path and Path(company_logo_path).exists():
+            try:
+                if logo_y is None:
+                    logo_y = self.pdf.get_y()
+                
+                self.pdf.image(
+                    company_logo_path, 
+                    x=logo_x, 
+                    y=logo_y, 
+                    w=logo_width, 
+                    h=logo_height
+                )
+            except Exception as e:
+                print(f"Error adding company logo: {e}")
+                # Agar logo load na ho to tabhi text show karein
+                self.pdf.set_font("Arial", 'B', 12)
+                self.pdf.cell(0, 10, company.upper(), 0, 1, 'L')
         
-        # self.pdf.ln(20)  # Add vertical space before printing the company name
-        self.pdf.set_font("Arial", 'B', 12)
-        self.pdf.cell(0, 10, company.upper(), 0, 1, 'L')

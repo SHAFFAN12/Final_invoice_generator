@@ -14,6 +14,7 @@ class DocumentApp:
         self.entry_widgets = {}
         self.line_item_entries = []
         self.error_labels = {}
+        self.earnings_entries = []  # New for salary slip
 
         self._setup_styles()
         self._setup_ui()
@@ -63,23 +64,29 @@ class DocumentApp:
         self.generate_button.pack(pady=10)
 
     def load_form_fields(self):
+        # Clear old widgets
         for widget in self.scrollable_frame.winfo_children():
             widget.destroy()
 
         self.entry_widgets.clear()
         self.error_labels.clear()
         self.line_item_entries.clear()
+        self.earnings_entries.clear()
 
         doc_type = self.doc_type_var.get()
         template = self.doc_manager.templates.get(doc_type, {})
 
+        # Generate header fields dynamically
         for field, field_type in template.get("header_fields", []):
             self._add_form_field(field, field_type)
 
+        # Special cases
         if doc_type in ["Invoice", "Sales Tax Invoice"]:
             self._add_line_items_section(template)
         elif doc_type == "Request Letter":
             self._add_letter_content_field()
+        elif doc_type == "Salary Slip":
+            self._add_salary_slip_sections(template)  # Add salary slip sections
 
     def _add_form_field(self, field: str, field_type: str) -> None:
         frame = ttk.Frame(self.scrollable_frame)
@@ -98,13 +105,60 @@ class DocumentApp:
         entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
         self.entry_widgets[field] = entry
 
+    def _add_salary_slip_sections(self, template):
+        """Add earnings section only for salary slip"""
+        # Earnings section
+        ttk.Label(self.scrollable_frame, text="EARNINGS", font=('Helvetica', 10, 'bold')).pack(anchor='w', pady=(10, 5))
+        for item in template.get("earnings_inputs", []):
+            self._add_salary_item(item, "earnings")
+
+    def _add_salary_item(self, item, section_type):
+        """Add individual earning item"""
+        frame = ttk.Frame(self.scrollable_frame)
+        frame.pack(fill=tk.X, pady=2)
+
+        name = item["name"]
+        field_type = item["type"]
+
+        ttk.Label(frame, text=f"{name}:", width=25, anchor='w').pack(side=tk.LEFT)
+        
+        if field_type == "number":
+            entry = ttk.Entry(frame, width=15)
+            entry.insert(0, "0")  # Default value
+        else:
+            entry = ttk.Entry(frame, width=15)
+        
+        entry.pack(side=tk.LEFT)
+        
+        # Only earnings now
+        self.earnings_entries.append((name, entry))
+
     def _add_letter_content_field(self):
         frame = ttk.Frame(self.scrollable_frame)
         frame.pack(fill=tk.BOTH, expand=True, pady=5)
 
         ttk.Label(frame, text="Content:").pack(anchor='w')
-        self.content_text = tk.Text(frame, height=6, font=("Helvetica", 10))
+
+        # Frame for text area + scrollbar
+        text_frame = ttk.Frame(frame)
+        text_frame.pack(fill=tk.BOTH, expand=True)
+
+        # Vertical scrollbar
+        scrollbar = ttk.Scrollbar(text_frame)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        # Unlimited text area
+        self.content_text = tk.Text(
+            text_frame,
+            height=20,
+            width=90,
+            font=("Helvetica", 10),
+            wrap="word",
+            yscrollcommand=scrollbar.set
+        )
         self.content_text.pack(fill=tk.BOTH, expand=True)
+
+        scrollbar.config(command=self.content_text.yview)
 
     def _add_line_items_section(self, template):
         ttk.Label(self.scrollable_frame, text="Line Items:", font=('Helvetica', 10, 'bold')).pack(anchor='w', pady=(10, 2))
@@ -118,7 +172,6 @@ class DocumentApp:
         header_frame.pack(fill=tk.X)
         for col in columns:
             ttk.Label(header_frame, text=col, font=('Helvetica', 9, 'bold'), width=15).pack(side=tk.LEFT, padx=2)
-        # ttk.Label(header_frame, text="Remove", width=6).pack(side=tk.LEFT)
 
         self.items_container = ttk.Frame(line_item_frame)
         self.items_container.pack(fill=tk.X, pady=5)
@@ -152,12 +205,22 @@ class DocumentApp:
         template = self.doc_manager.templates.get(doc_type, {})
         data = {}
 
+        # Collect header fields
         for field, _ in template.get("header_fields", []):
             widget = self.entry_widgets[field]
             if isinstance(widget, DateEntry):
                 data[field] = widget.get_date().strftime('%Y-%m-%d')
             else:
                 data[field] = widget.get().strip()
+
+        # Collect salary slip data in new format
+        if doc_type == "Salary Slip":
+            # Direct values instead of list of dictionaries
+            for name, entry in self.earnings_entries:
+                amount = entry.get().strip()
+                data[name] = amount
+            
+            
 
         # Auto-fill invoice month
         if doc_type == "Invoice" and "Date" in data:
@@ -167,9 +230,11 @@ class DocumentApp:
             except:
                 data["Invoice Month"] = ""
 
+        # Collect letter content
         if doc_type == "Request Letter":
             data["content"] = self.content_text.get("1.0", "end").strip()
 
+        # Collect line items
         if doc_type in ["Invoice", "Sales Tax Invoice"]:
             columns = template["line_items"]["columns"]
             data["line_items"] = []
