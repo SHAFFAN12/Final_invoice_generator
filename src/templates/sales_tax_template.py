@@ -282,9 +282,9 @@ class SalesTaxTemplate(BaseTemplate):
         amount_width = widths[-1]
         
         pdf.set_x(table_x)
-        pdf.set_font("Arial", 'B', 10)
+        pdf.set_font("Arial", 'B', 12)
         pdf.cell(label_width, 10, "TOTAL", border=1, align='C', fill=True)
-        pdf.set_font("Arial", 'B', 10)
+        pdf.set_font("Arial", 'B', 12)
         pdf.cell(amount_width, 10, f"Rs. {grand_total:,.2f}/-", border=1, align='R', fill=True)
         pdf.ln(15)
         
