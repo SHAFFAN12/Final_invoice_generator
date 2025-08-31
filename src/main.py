@@ -98,7 +98,7 @@ class DocumentApp:
         self.error_labels[field] = error_label
 
         if field_type == "date":
-            entry = DateEntry(frame, date_pattern='yyyy-mm-dd')
+            entry = DateEntry(frame, date_pattern='dd-mm-yyyy')
         else:
             entry = ttk.Entry(frame)
 
@@ -187,7 +187,7 @@ class DocumentApp:
         entry_list = []
         for col in template["line_items"]["columns"]:
             if "Date" in col:
-                entry = DateEntry(row, date_pattern='yyyy-mm-dd')
+                entry = DateEntry(row, date_pattern='dd-mm-yyyy')
             else:
                 entry = ttk.Entry(row, width=15)
             entry.pack(side=tk.LEFT, padx=2)
@@ -209,7 +209,7 @@ class DocumentApp:
         for field, _ in template.get("header_fields", []):
             widget = self.entry_widgets[field]
             if isinstance(widget, DateEntry):
-                data[field] = widget.get_date().strftime('%Y-%m-%d')
+                data[field] = widget.get_date().strftime('%d-%m-%Y')
             else:
                 data[field] = widget.get().strip()
 
@@ -225,7 +225,7 @@ class DocumentApp:
         # Auto-fill invoice month
         if doc_type == "Invoice" and "Date" in data:
             try:
-                dt = datetime.strptime(data["Date"], "%Y-%m-%d")
+                dt = datetime.strptime(data["Date"], "%d-%m-%Y")
                 data["Invoice Month"] = dt.strftime("%B %Y")
             except:
                 data["Invoice Month"] = ""

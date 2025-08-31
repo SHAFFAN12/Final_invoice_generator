@@ -69,24 +69,24 @@ class InvoiceTemplate(BaseTemplate):
         pdf.set_font("Arial", '', 10)
         m_s_text = str(data.get("M/s", ""))
         m_s_width = 60
-        m_s_lines = pdf.multi_cell(m_s_width, line_height, m_s_text, border=0, split_only=True)
+        m_s_lines = pdf.multi_cell(m_s_width, line_height, m_s_text, border=0, split_only=True) 
         m_s_height = max(line_height, len(m_s_lines) * line_height)
 
         pdf.set_xy(left_x, y)
         pdf.set_font("Arial", 'B', 10)
-        pdf.cell(30, m_s_height, "M/s:", border=1, align='L')
+        pdf.cell(30, m_s_height, "M/s:", border=1, align='L') 
         pdf.set_font("Arial", '', 10)
-        pdf.multi_cell(60, line_height, m_s_text, border=1, align='L')
+        pdf.multi_cell(60, line_height, m_s_text, border=1, align='L') 
 
         campaign_text = str(data.get("Campaign", ""))
-        campaign_lines = pdf.multi_cell(m_s_width, line_height, campaign_text, border=0, split_only=True)
+        campaign_lines = pdf.multi_cell(m_s_width, line_height, campaign_text, border=0, split_only=True) 
         campaign_height = max(line_height, len(campaign_lines) * line_height)
 
         pdf.set_xy(left_x, y + m_s_height)
         pdf.set_font("Arial", 'B', 10)
-        pdf.cell(30, campaign_height, "Campaign:", border=1, align='L')
+        pdf.cell(30, campaign_height, "Campaign:", border=1, align='L') 
         pdf.set_font("Arial", '', 10)
-        pdf.multi_cell(60, line_height, campaign_text, border=1, align='L')
+        pdf.multi_cell(60, line_height, campaign_text, border=1, align='L') 
 
         left_side_height = m_s_height + campaign_height
 
@@ -106,12 +106,16 @@ class InvoiceTemplate(BaseTemplate):
             pdf.cell(value_width, line_height, value_str, 0, 1, 'L')
             pdf.line(start_x, start_y + line_height, start_x + total_width, start_y + line_height)
 
+        page_width = pdf.w - 20  # 20 = left+right margin (10+10)
+        right_x = pdf.w - 60     # right side align block ka start (70 adjust kar sakte ho)
+
         pdf.set_xy(right_x, right_side_y)
         write_underlined_field("Date", data.get("Date", ""))
         pdf.set_x(right_x)
         write_underlined_field("Invoice No", data.get("Invoice No", ""))
         pdf.set_x(right_x)
         write_underlined_field("Invoice Month", data.get("Invoice Month", ""))
+
 
         right_side_height = line_height * 3
         new_y = max(y + left_side_height, right_side_y + right_side_height)
@@ -149,25 +153,25 @@ class InvoiceTemplate(BaseTemplate):
             max_y = y_start
 
             pdf.set_xy(start_x, y_start + top_padding)
-            pdf.multi_cell(col_widths[0], 5, str(idx), border=0, align='C')
+            pdf.multi_cell(col_widths[0], 5, str(idx), border=0, align='C') 
             max_y = max(max_y, pdf.get_y())
 
             pdf.set_xy(start_x + col_widths[0], y_start + top_padding)
-            pdf.multi_cell(col_widths[1], 5, full_desc, border=0, align='L')
+            pdf.multi_cell(col_widths[1], 5, full_desc, border=0, align='L') 
             max_y = max(max_y, pdf.get_y())
 
             pdf.set_xy(start_x + col_widths[0] + col_widths[1], y_start + top_padding)
-            pdf.multi_cell(col_widths[2], 5, item.get("Size", ""), border=0, align='C')
+            pdf.multi_cell(col_widths[2], 5, item.get("Size", ""), border=0, align='C') 
             max_y = max(max_y, pdf.get_y())
 
             pdf.set_xy(start_x + col_widths[0] + col_widths[1] + col_widths[2], y_start + top_padding)
-            pdf.multi_cell(col_widths[3], 5, item.get("Duration", ""), border=0, align='C')
+            pdf.multi_cell(col_widths[3], 5, item.get("Duration", ""), border=0, align='C') 
             max_y = max(max_y, pdf.get_y())
 
             amount_val = f"Rs. {item.get('Amount', '')}/-"
             pdf.set_font("Arial", 'B', 11)
             pdf.set_xy(start_x + col_widths[0] + col_widths[1] + col_widths[2] + col_widths[3], y_start + top_padding)
-            pdf.multi_cell(col_widths[4], 5, amount_val, border=0, align='C')
+            pdf.multi_cell(col_widths[4], 5, amount_val, border=0, align='C') 
             max_y = max(max_y, pdf.get_y())
 
 
@@ -196,6 +200,7 @@ class InvoiceTemplate(BaseTemplate):
 
         table_bottom_y = pdf.get_y()
         pdf.line(start_x, table_bottom_y, start_x + sum(col_widths), table_bottom_y)
+        pdf.ln(3)
 
     def _add_totals_and_footer(self, pdf: FPDF, items: List[Dict[str, str]]) -> None:
         total = 0
@@ -216,14 +221,15 @@ class InvoiceTemplate(BaseTemplate):
         pdf.set_draw_color(0, 0, 0)
 
         table_x = 10
-        table_width = 10 + 90 + 20 + 25 + 35  # 180 total
-        label_width = table_width - 35        # all columns except last 'Amount'
-        amount_width = 35                     # last column width same as table
+        table_width = 10 + 90 + 20 + 25 + 35
+        label_width = table_width - 35        
+        amount_width = 35                     
 
-        pdf.set_x(table_x)  # skip Sr. column
-        pdf.cell(label_width, 10, "TOTAL:", border=1, align='C', fill=True)
-        pdf.set_font("Arial", '', 10)
-        pdf.cell(amount_width, 10, f"PKR {total_str}", border=1, align='R', fill=True)
+        pdf.set_x(table_x)  
+        pdf.set_font("Arial", 'B', 12)  
+        pdf.cell(label_width, 10, "TOTAL:", border=1, align='C', fill=True) 
+        pdf.cell(amount_width, 10, f"PKR {total_str}", border=1, align='R', fill=True) 
+
 
         pdf.ln(15)
 
