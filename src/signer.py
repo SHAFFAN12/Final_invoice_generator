@@ -5,8 +5,17 @@ from pdf2image import convert_from_path
 import fitz  # PyMuPDF
 import os
 import tempfile
+import sys
 
-POPPLER_PATH = r"D:\Shaffan\gofarmediaautomation-main\poppler-24.08.0\Library\bin"
+def get_poppler_path():
+    if hasattr(sys, "_MEIPASS"):  # PyInstaller ke liye
+        base_path = sys._MEIPASS
+    else:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, "poppler", "bin")
+
+POPPLER_PATH = get_poppler_path()
+
 A4_WIDTH_PX = 794
 A4_HEIGHT_PX = 1123
 

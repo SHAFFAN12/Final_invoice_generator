@@ -7,6 +7,13 @@ from typing import Dict, Any, Optional
 from pdf_generator import PDFGenerator
 
 
+def resource_path(relative_path: str) -> str:
+    """ PyInstaller ke bundle ke andar aur normal run dono ke liye resource path """
+    if hasattr(sys, '_MEIPASS'):
+        return str(Path(sys._MEIPASS) / relative_path)
+    return str(Path(__file__).parent / relative_path)
+
+
 class DocumentManager:
     """Manages document templates and generation process."""
     
@@ -19,7 +26,7 @@ class DocumentManager:
     def _load_templates(self) -> Dict[str, Dict[str, Any]]:
         """Load all templates from the templates directory."""
         templates = {}
-        templates_dir = Path(__file__).parent / "templates"
+        templates_dir = Path(resource_path("templates"))
 
         # Ensure current directory is in Python path
         if str(Path(__file__).parent) not in sys.path:
@@ -41,7 +48,7 @@ class DocumentManager:
     def get_letterhead_path(self, company: str) -> Optional[str]:
         """Find the appropriate letterhead image for a company."""
         base_name = company.lower().replace(' ', '_')
-        assets_dir = Path(__file__).parent.parent / "assets" / "letterheads"
+        assets_dir = Path(resource_path("assets/letterheads"))
 
         for ext in ['.jpg', '.jpeg', '.png']:
             path = assets_dir / f"{base_name}{ext}"
@@ -75,7 +82,7 @@ class DocumentManager:
 
         # Generate filename with timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_dir = Path(__file__).parent.parent / "generated_docs"
+        output_dir = Path(resource_path("generated_docs"))
         output_dir.mkdir(exist_ok=True)
         filename = output_dir / f"{company.replace(' ', '_')}_{doc_type.replace(' ', '_')}_{timestamp}.pdf"
 
