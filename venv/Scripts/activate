@@ -35,7 +35,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="D:\Shaffan\gofarmediaautomation-main\venv"
+VIRTUAL_ENV="C:\Users\DELL\OneDrive\Desktop\Gufi bhai\Final_invoice_generator\venv"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"

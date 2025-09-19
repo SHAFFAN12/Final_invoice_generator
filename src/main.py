@@ -1,9 +1,12 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 from tkcalendar import DateEntry
 from datetime import datetime
 from document_manager import DocumentManager
 from signer import PDFSignatureApp
+from utils import get_output_dir
+import json
+from pathlib import Path
 
 class DocumentApp:
     def __init__(self, root):
@@ -60,8 +63,14 @@ class DocumentApp:
         self.canvas.pack(side="left", fill="both", expand=True)
         self.scrollbar.pack(side="right", fill="y")
 
-        self.generate_button = ttk.Button(self.root, text="Generate Document", command=self.generate_document)
-        self.generate_button.pack(pady=10)
+        button_frame = ttk.Frame(self.root)
+        button_frame.pack(pady=10)
+
+        self.generate_button = ttk.Button(button_frame, text="Generate Document", command=self.generate_document)
+        self.generate_button.pack(side=tk.LEFT, padx=5)
+
+        self.load_button = ttk.Button(button_frame, text="Load and Edit", command=self.load_document_for_edit)
+        self.load_button.pack(side=tk.LEFT, padx=5)
 
     def load_form_fields(self):
         # Clear old widgets
@@ -222,14 +231,6 @@ class DocumentApp:
             
             
 
-        # Auto-fill invoice month
-        if doc_type == "Invoice" and "Date" in data:
-            try:
-                dt = datetime.strptime(data["Date"], "%d-%m-%Y")
-                data["Invoice Month"] = dt.strftime("%B %Y")
-            except:
-                data["Invoice Month"] = ""
-
         # Collect letter content
         if doc_type == "Request Letter":
             data["content"] = self.content_text.get("1.0", "end").strip()
@@ -276,6 +277,105 @@ class DocumentApp:
 
         except Exception as e:
             messagebox.showerror("Error", str(e))
+
+
+    def load_document_for_edit(self):
+        """Opens a file dialog to select a PDF and loads its data for editing."""
+        try:
+            generated_docs_dir = get_output_dir()
+
+            filepath = filedialog.askopenfilename(
+                title="Select a Generated PDF to Edit",
+                initialdir=str(generated_docs_dir),
+                filetypes=[("PDF files", "*.pdf")],
+            )
+            if not filepath:
+                return
+
+            json_path = Path(filepath).with_suffix(".json")
+            if not json_path.exists():
+                messagebox.showerror(
+                    "Error",
+                    f"No editable data found for {Path(filepath).name}.\n"
+                    "Only documents generated with the new system can be edited.",
+                )
+                return
+
+            with open(json_path, "r") as f:
+                saved_data = json.load(f)
+
+            self.populate_form_with_data(saved_data)
+
+        except Exception as e:
+            messagebox.showerror("Error Loading Data", f"An unexpected error occurred: {e}")
+
+    def populate_form_with_data(self, saved_data: dict):
+        """Fills the UI form with data loaded from a saved document."""
+        company = saved_data.get("company")
+        doc_type = saved_data.get("doc_type")
+        form_data = saved_data.get("form_data", {})
+
+        if not company or not doc_type:
+            messagebox.showerror("Invalid Data", "The data file is missing company or document type.")
+            return
+
+        # Set company and document type
+        self.company_var.set(company)
+        self.doc_type_var.set(doc_type)
+        self.load_form_fields()  # This rebuilds the form fields
+
+        # Populate header fields
+        for field, widget in self.entry_widgets.items():
+            value = form_data.get(field)
+            if value is None:
+                continue
+
+            if isinstance(widget, DateEntry):
+                try:
+                    dt = datetime.strptime(str(value), "%d-%m-%Y")
+                    widget.set_date(dt)
+                except (ValueError, TypeError):
+                    pass  # Ignore if date format is wrong
+            else:
+                widget.delete(0, tk.END)
+                widget.insert(0, str(value))
+
+        # Populate special fields based on doc type
+        if doc_type in ["Invoice", "Sales Tax Invoice"]:
+            # Clear the initial empty row
+            for child in self.items_container.winfo_children():
+                child.destroy()
+            self.line_item_entries.clear()
+
+            template = self.doc_manager.templates.get(doc_type, {})
+            columns = template.get("line_items", {}).get("columns", [])
+            
+            for item_data in form_data.get("line_items", []):
+                self._add_line_item_row(template)
+                new_row_widgets = self.line_item_entries[-1]
+                for i, col_name in enumerate(columns):
+                    widget = new_row_widgets[i]
+                    value = item_data.get(col_name, "")
+                    if isinstance(widget, DateEntry):
+                        if value:
+                            try:
+                                dt = datetime.strptime(str(value), "%d-%m-%Y")
+                                widget.set_date(dt)
+                            except (ValueError, TypeError):
+                                pass
+                    else:
+                        widget.delete(0, tk.END)
+                        widget.insert(0, str(value))
+
+        elif doc_type == "Request Letter":
+            self.content_text.delete("1.0", tk.END)
+            self.content_text.insert("1.0", form_data.get("content", ""))
+
+        elif doc_type == "Salary Slip":
+            for name, entry_widget in self.earnings_entries:
+                value = form_data.get(name, "0")
+                entry_widget.delete(0, tk.END)
+                entry_widget.insert(0, str(value))
 
 
 if __name__ == "__main__":

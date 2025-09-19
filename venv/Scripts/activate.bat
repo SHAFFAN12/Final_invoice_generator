@@ -8,7 +8,7 @@ if defined _OLD_CODEPAGE (
     "%SystemRoot%\System32\chcp.com" 65001 > nul
 )
 
-set VIRTUAL_ENV=D:\Shaffan\gofarmediaautomation-main\venv
+set VIRTUAL_ENV=C:\Users\DELL\OneDrive\Desktop\Gufi bhai\Final_invoice_generator\venv
 
 if not defined PROMPT set PROMPT=$P$G
 

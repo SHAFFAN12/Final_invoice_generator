@@ -6,13 +6,14 @@ import fitz  # PyMuPDF
 import os
 import tempfile
 import sys
+from pathlib import Path
 
 def get_poppler_path():
     if hasattr(sys, "_MEIPASS"):  # PyInstaller ke liye
-        base_path = sys._MEIPASS
+        base_path = Path(sys._MEIPASS)
     else:
-        base_path = os.path.abspath(".")
-    return os.path.join(base_path, "poppler", "bin")
+        base_path = Path(__file__).parent.parent
+    return str(base_path / "poppler" / "bin")
 
 POPPLER_PATH = get_poppler_path()
 

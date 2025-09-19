@@ -1,17 +1,24 @@
 import os
 import importlib
 import sys
+import json
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, Optional
 from pdf_generator import PDFGenerator
+from utils import get_output_dir
 
 
 def resource_path(relative_path: str) -> str:
-    """ PyInstaller ke bundle ke andar aur normal run dono ke liye resource path """
+    """ Get absolute path to resource, works for dev and for PyInstaller """
     if hasattr(sys, '_MEIPASS'):
-        return str(Path(sys._MEIPASS) / relative_path)
-    return str(Path(__file__).parent / relative_path)
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = Path(sys._MEIPASS)
+    else:
+        # Not in a PyInstaller bundle, so the base path is the project root
+        base_path = Path(__file__).parent.parent
+
+    return str(base_path / relative_path)
 
 
 class DocumentManager:
@@ -26,7 +33,7 @@ class DocumentManager:
     def _load_templates(self) -> Dict[str, Dict[str, Any]]:
         """Load all templates from the templates directory."""
         templates = {}
-        templates_dir = Path(resource_path("templates"))
+        templates_dir = Path(resource_path("src/templates"))
 
         # Ensure current directory is in Python path
         if str(Path(__file__).parent) not in sys.path:
@@ -82,8 +89,7 @@ class DocumentManager:
 
         # Generate filename with timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_dir = Path(resource_path("generated_docs"))
-        output_dir.mkdir(exist_ok=True)
+        output_dir = get_output_dir()
         filename = output_dir / f"{company.replace(' ', '_')}_{doc_type.replace(' ', '_')}_{timestamp}.pdf"
 
         # Create and configure PDF generator
@@ -98,5 +104,16 @@ class DocumentManager:
             signature_path=self.signature_path,
             stamp_path=self.stamp_path
         )
+
+        # Save data to a JSON file for future editing
+        data_to_save = {
+            "company": company,
+            "doc_type": doc_type,
+            "form_data": data or {},
+        }
+        json_path = filename.with_suffix(".json")
+        with open(json_path, "w") as f:
+            json.dump(data_to_save, f, indent=4)
+
 
         return str(filename.absolute())
